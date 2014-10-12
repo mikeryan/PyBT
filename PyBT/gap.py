@@ -57,6 +57,24 @@ def decode_service_data(data):
     uuid = '%04x' % unpack('<h', uuid)
     return (uuid, data)
 
+manufacturers = {
+    '004c': 'Apple, Inc.'
+}
+
+def decode_manufacturer_specific_data(data):
+    if len(data) < 2:
+        raise Exception("Manufacturer specific data must be at least two bytes")
+
+    mfgr, data = (data[0:2], data[2:])
+    mfgr = '%04x' % unpack('<h', mfgr)
+
+    mname = manufacturers.get(mfgr)
+    if mname is not None:
+        mfgr = '%s (%s)' % (mfgr, mname)
+
+    return (mfgr, data)
+
+
 class GAP:
     fields = []
     types = {
@@ -103,6 +121,7 @@ class GAP:
         0x0A: decode_tx_power_level,
         0x12: decode_slave_connection_interval_range,
         0x16: decode_service_data,
+        0xFF: decode_manufacturer_specific_data,
     }
 
     def __init__(self):
@@ -142,5 +161,9 @@ if __name__ == "__main__":
     gap.decode(data)
     print gap
     data = '\x02\x01\x06\x11\x06\xba\x56\x89\xa6\xfa\xbf\xa2\xbd\x01\x46\x7d\x6e\x75\x45\xab\xad\x05\x16\x0a\x18\x05\x04'
+    gap.decode(data)
+    print gap
+
+    data = '\x02\x01\x1a\x13\xff\x4c\x00\x0c\x0e\x00\x1a\x05\x5c\x67\xbe\xc9\xca\xc0\x1d\x54\x4a\x9d\x5d'
     gap.decode(data)
     print gap
