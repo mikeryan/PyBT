@@ -1,4 +1,5 @@
 from struct import unpack
+from binascii import hexlify
 
 def decode_flags(flags):
     if len(flags) != 1:
@@ -28,6 +29,15 @@ def decode_uuid16(uuids):
         res.append('%04x' % unpack('<h', uuids[i:i+2]))
     return res
 
+def decode_uuid128(uuids):
+    if len(uuids) % 16 != 0:
+        raise Exception("List of 128-bit UUIDsmust be a multiple of 16 bytes")
+    res = []
+    for i in range(0, len(uuids), 16):
+        r = uuids[i:i+16][::-1]
+        res.append('-'.join(map(lambda x: hexlify(x), (r[0:4], r[4:6], r[6:8], r[8:10], r[10:]))))
+    return res
+
 def decode_tx_power_level(power):
     if len(power) != 1:
         raise Exception("Power level must be 1 byte")
@@ -37,6 +47,14 @@ def decode_slave_connection_interval_range(range):
     if len(range) != 4:
         raise Exception("Range must be 4 bytes")
     return map(lambda x: '%g ms' % (unpack('<h', x)[0] * 1.25, ), (range[0:2], range[2:]))
+
+def decode_service_data(data):
+    if len(data) < 2:
+        raise Exception("Service data must be at least 2 bytes")
+
+    uuid, data = (data[0:2], data[2:])
+    uuid = '%04x' % unpack('<h', uuid)
+    return (uuid, data)
 
 class GAP:
     fields = []
@@ -79,8 +97,11 @@ class GAP:
         0x01: decode_flags,
         0x02: decode_uuid16,
         0x03: decode_uuid16,
+        0x06: decode_uuid128,
+        0x07: decode_uuid128,
         0x0A: decode_tx_power_level,
         0x12: decode_slave_connection_interval_range,
+        0x16: decode_service_data,
     }
 
     def __init__(self):
@@ -113,5 +134,12 @@ if __name__ == "__main__":
     gap.decode(data)
     print gap
     data = '\x02\x01\x04\x03\x03\x12\x18\x03\x19\xc2\x03\x0a\x09Bad Mouse'
+    gap.decode(data)
+    print gap
+
+    data = '\x04\x09\x4f\x6e\x65\x02\x0a\xfa'
+    gap.decode(data)
+    print gap
+    data = '\x02\x01\x06\x11\x06\xba\x56\x89\xa6\xfa\xbf\xa2\xbd\x01\x46\x7d\x6e\x75\x45\xab\xad\x05\x16\x0a\x18\x05\x04'
     gap.decode(data)
     print gap
