@@ -9,8 +9,9 @@ def decode_flags(flags):
         'LE Limited Discoverable Mode',
         'LE General Discoverable Mode',
         'BR/EDR Not Supported',
-        'Simultaneous LE and BR/EDR',
-        'Reserved', 'Reserved', 'Reserved', 'Reserved', # silly hack
+        'Simultaneous LE and BR/EDR (Controller)',
+        'Simultaneous LE and BR/EDR (Host)',
+        'Reserved', 'Reserved', 'Reserved', # silly hack
     )
 
     res = []
