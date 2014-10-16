@@ -27,7 +27,7 @@ def decode_uuid16(uuids):
         raise Exception("List of 16-bit UUIDs must be a multiple of 2 bytes")
     res = []
     for i in range(0, len(uuids), 2):
-        res.append('%04x' % unpack('<h', uuids[i:i+2]))
+        res.append('%04x' % unpack('<H', uuids[i:i+2]))
     return res
 
 def decode_uuid128(uuids):
@@ -47,14 +47,14 @@ def decode_tx_power_level(power):
 def decode_slave_connection_interval_range(range):
     if len(range) != 4:
         raise Exception("Range must be 4 bytes")
-    return map(lambda x: '%g ms' % (unpack('<h', x)[0] * 1.25, ), (range[0:2], range[2:]))
+    return map(lambda x: '%g ms' % (unpack('<H', x)[0] * 1.25, ), (range[0:2], range[2:]))
 
 def decode_service_data(data):
     if len(data) < 2:
         raise Exception("Service data must be at least 2 bytes")
 
     uuid, data = (data[0:2], data[2:])
-    uuid = '%04x' % unpack('<h', uuid)
+    uuid = '%04x' % unpack('<H', uuid)
     return (uuid, data)
 
 manufacturers = {
@@ -66,7 +66,7 @@ def decode_manufacturer_specific_data(data):
         raise Exception("Manufacturer specific data must be at least two bytes")
 
     mfgr, data = (data[0:2], data[2:])
-    mfgr = '%04x' % unpack('<h', mfgr)
+    mfgr = '%04x' % unpack('<H', mfgr)
 
     mname = manufacturers.get(mfgr)
     if mname is not None:
