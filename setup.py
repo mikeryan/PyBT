@@ -11,4 +11,12 @@ setup(
     url = "https://github.com/mikeryan/PyBT",
     packages=['PyBT'],
     install_requires = ['scapy'],
+    entry_points = {
+        'console_scripts': [
+            'gatt_client = PyBT.gattclient:main',
+        ],
+    },
+    extras_require = {
+        'gattclient': ['gevent'],
+    }
 )
