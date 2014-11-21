@@ -1,3 +1,5 @@
+import os
+import sys
 import logging
 
 from scapy.layers.bluetooth import *
@@ -11,9 +13,16 @@ class BTStack:
     rand_addr = None
 
     def __init__(self, adapter=0):
-        self.s = BluetoothUserSocket(adapter)
         self.interval_min = None
         self.interval_max = None
+
+        try:
+            self.s = BluetoothUserSocket(adapter)
+        except BluetoothSocketError as e:
+            sys.stderr.write("Creating socket failed: %s\n" % (repr(e)))
+            if os.getuid() > 0:
+                sys.stderr.write("Are you definitely root? detected uid: %d\n" % (os.getuid()))
+            sys.exit(1)
 
         # set up device
         self.command(HCI_Cmd_Reset())
