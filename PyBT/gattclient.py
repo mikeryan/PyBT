@@ -1,4 +1,7 @@
+import os
 import sys
+import code
+from threading import Thread
 import gevent
 from gevent.fileobject import FileObject
 from binascii import unhexlify
@@ -14,89 +17,119 @@ monkey.patch_select()
 DISCONNECTED = 0
 CONNECTED = 1
 
+central = None
 seen = {}
 state = DISCONNECTED
 onconnect = []
 
-def parse_command(f, recurse=True):
-    if len(f) == 0:
-        return None
+def debug(msg):
+    if os.getenv("DEBUG"):
+        sys.stdout.write(msg)
+        sys.stdout.write("\n")
 
-    if f[0] == 'scan':
-        if len(f) == 1 or f[1] == 'on':
+class InvalidCommand(Exception):
+    pass
+
+class UnknownCommand(Exception):
+    pass
+
+class CommandModule(object):
+    """Dumb container for commands"""
+    @staticmethod
+    def scan(*args):
+        if len(args) == 0 or args[0] == 'on':
             arg = 'on'
-        elif f[1] == 'off':
+        elif args[0] == 'off':
             arg = 'off'
         else:
-            print "Error: scan [on|off]"
-            return None
+            raise InvalidCommand("scan [on|off]")
         return ('scan', arg)
-    if f[0] == 'connect':
+
+    @staticmethod
+    def connect(*args):
+        def fail():
+            raise InvalidCommand("connect <address> [public|random]")
+
         arg = None
-        if len(f) == 1:
-            print "Error: connect <address> [type]"
-            return None
-        elif len(f) == 3:
-            if f[2] in ('public', 'random'):
-                arg = f[2]
+        if len(args) == 1:
+            pass
+        elif len(args) == 2:
+            if args[1] in ('public', 'random'):
+                arg = args[1]
             else:
-                print "Type must be public or random"
-        return ('connect', f[1], arg)
-    if f[0] == 'quit':
-        return ('quit', )
-    if f[0] == 'onconnect':
-        if recurse:
-            subcommand = parse_command(f[1:], False)
-            return ('onconnect', subcommand)
+                fail()
         else:
-            print "Cannot have onconnect within onconnect"
-            return None
-    if f[0] == 'write-req':
-        if len(f) != 3:
-            print "Error: write-req <handle> [value]"
-            return None
+            fail()
+        return ('connect', args[0], arg)
+
+    @staticmethod
+    def quit(*args):
+        return ('quit', )
+
+    @staticmethod
+    def write_req(*args):
+        if len(args) != 2:
+            raise InvalidCommand("write-req <handle> <value>")
         try:
-            handle = int(f[1], base=16)
-            value = unhexlify(f[2])
+            handle = int(args[0], base=16)
+            value = unhexlify(args[1])
         except:
-            print "Format error, handle is a hex int and value is a bunch of hex bytes"
-            return None
+            raise InvalidCommand("Format error, handle is a hex int and value is a bunch of hex bytes")
         return ('write-req', handle, value)
-    if f[0] == 'read':
-        if len(f) != 2:
-            print "Error: read <handle>"
-            return None
+
+    @staticmethod
+    def read(*args):
+        if len(args) != 1:
+            raise InvalidCommand("read <handle>")
         try:
-            handle = int(f[1], base=16)
+            handle = int(args[0], base=16)
         except:
-            print "Format error, handle is a hex int"
-            return None
+            raise InvalidCommand("Format error, handle is a hex int")
         return ('read', handle)
-    if f[0] == 'eval':
-        if len(f) == 1:
-            print "Error: eval <python code>"
-            return None
-        try:
-            thunk = eval('lambda: %s' % ' '.join(f[1:]))
-        except Exception as e:
-            print "Error: cannot eval: %s" % e
-            return None
-        return ('eval', thunk)
-    if f[0] == 'raw':
-        if len(f) != 2:
+
+    @staticmethod
+    def raw(*args):
+        if len(args) != 1:
             print "Error: raw [data]"
             return None
         try:
-            data = unhexlify(f[1])
+            data = unhexlify(args[0])
         except:
             print "Format error, data is a bunch of hex bytes"
             return None
         return ('raw', data)
 
-    print "Error: Unknown command '%s'" % f[0]
-    return None
+    @staticmethod
+    def onconnect(*args):
+        subcommand = parse_command(args, False)
+        if subcommand[0] == 'onconnect':
+            raise InvalidCommand("Can't nest oncommands")
+        return ('onconnect', subcommand)
 
-def process_command(cmd, central):
+
+COMMANDS = {
+    'scan': CommandModule.scan,
+    'connect': CommandModule.connect,
+    'quit': CommandModule.quit,
+    'write-req': CommandModule.write_req,
+    'read': CommandModule.read,
+    'oncommand': CommandModule.onconnect,
+}
+
+def parse_command(f, recurse=True):
+    cmd_name = f[0]
+    try:
+        cmd = COMMANDS[cmd_name](*f[1:])
+        return cmd
+    except IndexError:
+        pass # Ignore people mushing return
+    except KeyError as e:
+        print "Error: Unknown command '%s'" % e.args[0]
+        raise UnknownCommand("unknown: %s" % e.args[0])
+    except InvalidCommand as e:
+        print(repr(e)) # TODO Deal more gracefully
+
+def process_command(cmd):
     global seen, state, onconnect
 
     if cmd[0] == 'scan':
@@ -136,7 +169,7 @@ def process_command(cmd, central):
     elif cmd[0] == 'raw':
         central.stack.raw_att(cmd[1])
 
-def command_handler(central):
+def command_handler():
     while True:
         sys.stdout.write('>>> ')
         sys.stdout.flush()
@@ -151,7 +184,7 @@ def command_handler(central):
         line = line.strip()
         cmd = parse_command(line.split())
         if cmd is not None:
-            process_command(cmd, central)
+            process_command(cmd)
 
 def dump_gap(data):
     if len(data) > 0:
@@ -195,11 +228,29 @@ def socket_handler(central):
         elif event.type != BTEvent.NONE:
             print event
 
+
+orig_runsource = code.InteractiveConsole.runsource
+def runsource(self, source, filename='<input>', symbol='single', encode=True):
+    # Try parsing it as a gatt client thing, then fall back to python
+    debug("[-] %s" % repr(source.split()))
+    try:
+        cmd = parse_command(source.split())
+    except UnknownCommand:
+        # XXX uncomment me to make this into a python repl
+        # return orig_runsource(self, source)
+        return None
+
+    if cmd is not None:
+        debug("[-] %s" % repr(cmd))
+        process_command(cmd)
+
 def main():
+    global central
     central = LE_Central(adapter=0)
     gevent.spawn(socket_handler, central)
-    gevent.spawn(command_handler, central)
-    gevent.wait()
+    Thread(target=gevent.wait).start()
+    code.InteractiveConsole.runsource = runsource
+    code.interact(local=locals())
 
 if __name__ == '__main__':
     main()
