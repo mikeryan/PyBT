@@ -1,11 +1,33 @@
 import os
 import sys
+from fcntl import ioctl
 import logging
 
+import socket as s
 from scapy.layers.bluetooth import *
 from select import select
 
 log = logging.getLogger("PyBT.stack")
+
+class HCIConfig(object):
+    @staticmethod
+    def down(iface):
+        # 31 => PF_BLUETOOTH
+        # 0 => HCI_CHANNEL_USER
+        # 0x400448ca => HCIDEVDOWN
+        sock = s.socket(31, s.SOCK_RAW, 1)
+        ioctl(sock.fileno(), 0x400448ca, iface)
+        sock.close()
+        return True
+
+    @staticmethod
+    def up(iface):
+        sock = s.socket(31, s.SOCK_RAW, iface)
+        # TODO
+        # ioctl(sock.fileno(), HCIDEVUP, 0)
+        sock.close()
+        return False
+
 
 class BTStack:
     s = None
@@ -16,13 +38,7 @@ class BTStack:
         self.interval_min = None
         self.interval_max = None
 
-        try:
-            self.s = BluetoothUserSocket(adapter)
-        except BluetoothSocketError as e:
-            sys.stderr.write("Creating socket failed: %s\n" % (repr(e)))
-            if os.getuid() > 0:
-                sys.stderr.write("Are you definitely root? detected uid: %d\n" % (os.getuid()))
-            sys.exit(1)
+        self.s = self.get_socket(adapter)
 
         # set up device
         self.command(HCI_Cmd_Reset())
@@ -37,6 +53,23 @@ class BTStack:
         self.command(HCI_Cmd_LE_Host_Supported())
 
         self.command(HCI_Cmd_LE_Read_Buffer_Size())
+
+    def get_socket(self, adapter):
+        try:
+            return BluetoothUserSocket(adapter)
+        except BluetoothSocketError as e:
+
+            sys.stderr.write("[!] Creating socket failed: %s\n" % (repr(e)))
+            if os.getuid() > 0:
+                sys.stderr.write("[!] Are you definitely root? detected uid: %d\n" % (os.getuid()))
+            else:
+                sys.stderr.write("[+] have root, attempting to take iface down\n")
+                HCIConfig.down(adapter)
+                try:
+                    return BluetoothUserSocket(adapter)
+                except BluetoothSocketError:
+                    sys.stderr.write("[!] Giving up.\n")
+        sys.exit(1)
 
     # hack to make this select-able
     def fileno(self):
