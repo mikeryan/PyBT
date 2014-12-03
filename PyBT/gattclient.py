@@ -250,9 +250,11 @@ def main():
     global central
     central = LE_Central(adapter=0)
     gevent.spawn(socket_handler, central)
-    Thread(target=gevent.wait).start()
+
     code.InteractiveConsole.runsource = runsource
-    code.interact(local=locals())
+    Thread(target=code.interact, kwargs={'local': locals()}).start()
+
+    gevent.wait()
 
 if __name__ == '__main__':
     main()
