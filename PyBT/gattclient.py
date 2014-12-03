@@ -242,6 +242,13 @@ def socket_handler(central):
         elif event.type == BTEvent.DISCONNECTED:
             state = DISCONNECTED
             print "Disconnected"
+
+        elif event.type == BTEvent.ATT_DATA:
+            pkt = event.data
+            # ack handle value notification
+            if pkt.opcode == 0x1d:
+                central.stack.raw_att("\x1e")
+            print event
         elif event.type != BTEvent.NONE:
             print event
 
