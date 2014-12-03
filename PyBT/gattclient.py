@@ -114,7 +114,7 @@ class CommandModule(object):
     def onconnect(*args):
         subcommand = parse_command(args, False)
         if subcommand[0] == 'onconnect':
-            raise InvalidCommand("Can't nest oncommands")
+            raise InvalidCommand("Can't nest onconnects")
         return ('onconnect', subcommand)
 
 
@@ -125,7 +125,7 @@ COMMANDS = {
     'write-req': CommandModule.write_req,
     'write-cmd': CommandModule.write_cmd,
     'read': CommandModule.read,
-    'oncommand': CommandModule.onconnect,
+    'onconnect': CommandModule.onconnect,
 }
 
 def parse_command(f, recurse=True):
