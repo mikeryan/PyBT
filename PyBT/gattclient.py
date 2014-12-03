@@ -99,6 +99,17 @@ class CommandModule(object):
         return ('read', handle)
 
     @staticmethod
+    def interval(*args):
+        if len(args) != 2:
+            raise InvalidCommand("interval <min> <max>")
+        try:
+            min = int(args[0])
+            max = int(args[1])
+        except:
+            raise InvalidCommand("Format error, min and max must be integers")
+        return ('interval', min, max)
+
+    @staticmethod
     def raw(*args):
         if len(args) != 1:
             print "Error: raw [data]"
@@ -125,6 +136,7 @@ COMMANDS = {
     'write-req': CommandModule.write_req,
     'write-cmd': CommandModule.write_cmd,
     'read': CommandModule.read,
+    'interval': CommandModule.interval,
     'onconnect': CommandModule.onconnect,
 }
 
@@ -176,6 +188,9 @@ def process_command(cmd):
             print "Can only read when connected!"
         else:
             central.att.read(handle)
+    elif cmd[0] == 'interval':
+        central.stack.interval_min = cmd[1]
+        central.stack.interval_max = cmd[2]
     elif cmd[0] == 'onconnect':
         onconnect.append(cmd[1])
     elif cmd[0] == 'eval':

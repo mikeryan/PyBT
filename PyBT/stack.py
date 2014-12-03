@@ -12,6 +12,8 @@ class BTStack:
 
     def __init__(self, adapter=0):
         self.s = BluetoothUserSocket(adapter)
+        self.interval_min = None
+        self.interval_max = None
 
         # set up device
         self.command(HCI_Cmd_Reset())
@@ -85,7 +87,11 @@ class BTStack:
         self.command(HCI_Cmd_LE_Set_Scan_Enable(enable=0))
 
     def connect(self, addr, type):
-        self.s.send(HCI_Hdr()/HCI_Command_Hdr()/HCI_Cmd_LE_Create_Connection(paddr=addr,patype=type))
+        if self.interval_min is not None and self.interval_max is not None:
+            self.s.send(HCI_Hdr()/HCI_Command_Hdr()/HCI_Cmd_LE_Create_Connection(paddr=addr,patype=type, \
+                        min_interval=self.interval_min, max_interval=self.interval_max))
+        else:
+            self.s.send(HCI_Hdr()/HCI_Command_Hdr()/HCI_Cmd_LE_Create_Connection(paddr=addr,patype=type))
         # can't use send_command() on this guy because we get a command status (0x0e) and not
         # command complete (0x0f)
         while True:
