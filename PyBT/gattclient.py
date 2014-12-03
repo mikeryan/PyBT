@@ -78,6 +78,17 @@ class CommandModule(object):
         return ('write-req', handle, value)
 
     @staticmethod
+    def write_cmd(*args):
+        if len(args) != 2:
+            raise InvalidCommand("write-cmd <handle> <value>")
+        try:
+            handle = int(args[0], base=16)
+            value = unhexlify(args[1])
+        except:
+            raise InvalidCommand("Format error, handle is a hex int and value is a bunch of hex bytes")
+        return ('write-cmd', handle, value)
+
+    @staticmethod
     def read(*args):
         if len(args) != 1:
             raise InvalidCommand("read <handle>")
@@ -112,6 +123,7 @@ COMMANDS = {
     'connect': CommandModule.connect,
     'quit': CommandModule.quit,
     'write-req': CommandModule.write_req,
+    'write-cmd': CommandModule.write_cmd,
     'read': CommandModule.read,
     'oncommand': CommandModule.onconnect,
 }
@@ -150,11 +162,14 @@ def process_command(cmd):
             central.stack.connect(addr, type)
     elif cmd[0] == 'quit':
         exit(0)
-    elif cmd[0] == 'write-req':
+    elif cmd[0] == 'write-req' or cmd[0] == 'write-cmd':
         if state != CONNECTED:
             print "Can only write when connected!"
         else:
-            central.att.write_req(handle=cmd[1], value=cmd[2])
+            if cmd[0] == 'write-req':
+                central.att.write_req(handle=cmd[1], value=cmd[2])
+            else:
+                central.att.write_cmd(handle=cmd[1], value=cmd[2])
     elif cmd[0] == 'read':
         handle = cmd[1]
         if state != CONNECTED:

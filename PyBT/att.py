@@ -85,3 +85,6 @@ class ATT_Protocol:
 
     def write_req(self, handle, value):
         self.send(ATT_Write_Request(gatt_handle=handle, data=value))
+
+    def write_cmd(self, handle, value):
+        self.send(ATT_Write_Command(gatt_handle=handle, data=value))
