@@ -117,6 +117,8 @@ COMMANDS = {
 }
 
 def parse_command(f, recurse=True):
+    if len(f) == 0:
+        return None
     cmd_name = f[0]
     try:
         cmd = COMMANDS[cmd_name](*f[1:])
