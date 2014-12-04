@@ -1,6 +1,7 @@
 import os
 import sys
 import code
+import argparse
 from threading import Thread
 import gevent
 from gevent.fileobject import FileObject
@@ -26,6 +27,14 @@ def debug(msg):
     if os.getenv("DEBUG"):
         sys.stdout.write(msg)
         sys.stdout.write("\n")
+
+
+def _argparser():
+    parser = argparse.ArgumentParser(description='Gatt Client')
+    parser.add_argument('-i', '--interface', dest='interface', action='store',
+                        type=int, help='Interface to use', default=0)
+    return parser
+
 
 class InvalidCommand(Exception):
     pass
@@ -285,7 +294,11 @@ def runsource(self, source, filename='<input>', symbol='single', encode=True):
 
 def main():
     global central
-    central = LE_Central(adapter=0)
+
+    parser = _argparser()
+    args = parser.parse_args()
+
+    central = LE_Central(adapter=args.interface)
     gevent.spawn(socket_handler, central)
 
     code.InteractiveConsole.runsource = runsource
