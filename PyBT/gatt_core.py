@@ -4,6 +4,10 @@ import select
 import functools
 import threading
 import gevent
+from gevent.select import select
+# this is hack because the above does not work
+from gevent import monkey
+monkey.patch_select()
 
 from PyBT.gap import GAP
 from PyBT.stack import BTEvent

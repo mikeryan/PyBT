@@ -8,18 +8,6 @@ from binascii import unhexlify
 from PyBT.roles import LE_Central
 from PyBT.gatt_core import Connection, ConnectionError
 
-from gevent.select import select
-# this is hack because the above does not work
-from gevent import monkey
-monkey.patch_select()
-
-DISCONNECTED = 0
-CONNECTED = 1
-
-central = None
-state = DISCONNECTED
-onconnect = []
-
 def debug(msg):
     if os.getenv("DEBUG"):
         sys.stdout.write(msg)
@@ -135,7 +123,6 @@ COMMANDS = {
     'write-cmd': CommandModule.write_cmd,
     'read': CommandModule.read,
     'interval': CommandModule.interval,
-    'onconnect': CommandModule.onconnect,
 }
 
 
