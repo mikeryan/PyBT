@@ -100,7 +100,7 @@ class Connection(object):
 
     def _dispatchSocketHandler(self):
         handler = SocketHandler(self)
-        gevent.spawn(handler.start)
+        gevent.spawn(handler.run)
 
     # Public command functions
 
