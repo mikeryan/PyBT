@@ -158,6 +158,8 @@ def runsource_with_connection(connection):
         oncommand_hack = False
         try:
             parts = source.split()
+            if len(parts) == 0:
+                return
             if parts[0] == 'oncommand':
                 oncommand_hack = True
                 parts.pop(0)
