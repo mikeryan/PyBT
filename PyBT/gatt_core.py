@@ -105,12 +105,10 @@ class Connection(object):
     # Public command functions
 
     def scan(self, arg):
-        sys.stderr.write("entering scan\n")
         if arg == 'on':
             self.central.stack.scan()
         else:
             self.central.stack.scan_stop()
-        sys.stderr.write("exiting scan\n")
 
     def connect(self, addr, kind=None):
         if kind is None:
