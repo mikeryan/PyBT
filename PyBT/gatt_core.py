@@ -1,6 +1,6 @@
 import sys
 import errno
-import select
+import select as native_select
 import functools
 import threading
 import gevent
@@ -46,8 +46,8 @@ class SocketHandler(object):
         seen = self.conn.seen
         while True:
             try:
-                select.select([self.conn.central.stack], [], [])
-            except select.error as ex:
+                select([self.conn.central.stack], [], [])
+            except native_select.error as ex:
                 if ex[0] == errno.EINTR:
                     continue
                 raise
@@ -105,10 +105,12 @@ class Connection(object):
     # Public command functions
 
     def scan(self, arg):
+        sys.stderr.write("entering scan\n")
         if arg == 'on':
             self.central.stack.scan()
         else:
             self.central.stack.scan_stop()
+        sys.stderr.write("exiting scan\n")
 
     def connect(self, addr, kind=None):
         if kind is None:

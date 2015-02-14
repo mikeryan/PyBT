@@ -163,7 +163,8 @@ def runsource_with_connection(connection):
                 parts.pop(0)
             # FIXME(richo) Find out what version gives short syntax
             args = parse_command(parts)
-            cmd = args.pop(0).replace('-', '_')
+            cmd = args[0].replace('-', '_')
+            args = args[1:]
         except UnknownCommand:
             # XXX uncomment me to make this into a python repl
             # return orig_runsource(self, source)
@@ -190,7 +191,7 @@ def main():
     connection.start()
 
     code.InteractiveConsole.runsource = runsource_with_connection(connection)
-    Thread(target=code.interact, local=locals()).start()
+    Thread(target=code.interact).start()
 
     gevent.wait()
 
