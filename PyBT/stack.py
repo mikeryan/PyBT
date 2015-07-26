@@ -67,7 +67,8 @@ class BTStack:
                 HCIConfig.down(adapter)
                 try:
                     return BluetoothUserSocket(adapter)
-                except BluetoothSocketError:
+                except BluetoothSocketError as e:
+                    sys.stderr.write("[!] Failed to create socket: %s" % repr(e))
                     sys.stderr.write("[!] Giving up.\n")
         sys.exit(1)
 
